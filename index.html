@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Bilye Makinesi</title>
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;600;700&display=swap"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage" role="img" aria-label="Ksilofon ve davul setinden oluşan 3B bilye makinesi"></div>
+
+      <header class="topbar">
+        <section class="plate" aria-live="polite">
+          <p class="brand">Bilye Makinesi <span>· ABC müzik motoru</span></p>
+          <h1 id="tune-title">Yükleniyor…</h1>
+          <p id="tune-composer" class="composer"></p>
+          <dl class="readouts">
+            <div><dt>Ölçü</dt><dd id="ro-bar">–</dd></div>
+            <div><dt>Tempo</dt><dd id="ro-tempo">–</dd></div>
+            <div><dt>Ölçü birimi</dt><dd id="ro-meter">–</dd></div>
+            <div><dt>Havadaki bilye</dt><dd id="ro-marbles">0</dd></div>
+          </dl>
+        </section>
+        <nav class="toggles" aria-label="Paneller">
+          <button id="btn-library" class="chip" aria-expanded="false" aria-controls="library">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10M4 10h10M4 15h7M17 4v11.5a2.5 2.5 0 1 1-2-2.45" /></svg>
+            Eserler
+          </button>
+          <button id="btn-editor" class="chip" aria-expanded="false" aria-controls="editor">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" /></svg>
+            Nota editörü
+          </button>
+          <button id="btn-mixer" class="chip" aria-expanded="false" aria-controls="mixer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16" /><circle cx="6" cy="14" r="2" /><circle cx="12" cy="8" r="2" /><circle cx="18" cy="15" r="2" /></svg>
+            Ses
+          </button>
+        </nav>
+      </header>
+
+      <main class="middle">
+        <aside id="library" class="drawer drawer-left" hidden aria-label="Eserler">
+          <header class="drawer-head">
+            <h2>Eserler</h2>
+            <p>Kamu malı klasikler ve halk ezgileri; ksilofon ve davul için düzenlendi.</p>
+          </header>
+          <ol id="tune-list" class="tune-list"></ol>
+        </aside>
+
+        <aside id="editor" class="drawer drawer-right" hidden aria-label="Nota editörü">
+          <header class="drawer-head">
+            <h2>Nota editörü</h2>
+            <p>Eser ABC notasyonuyla yazılır. Değiştirip <strong>Uygula</strong>'ya bas; makine yeni notaları çalar.</p>
+          </header>
+          <label class="sr-only" for="abc-input">ABC notası</label>
+          <textarea id="abc-input" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+          <div class="editor-actions">
+            <button id="btn-apply" class="primary">Uygula ve çal</button>
+            <button id="btn-template" class="ghost">Boş şablon</button>
+          </div>
+          <div id="editor-status" class="status" role="status"></div>
+          <details class="cheatsheet">
+            <summary>ABC kısa rehberi</summary>
+            <dl>
+              <div><dt><code>K:Am</code></dt><dd>Tonalite (La minör). <code>K:G</code>, <code>K:Bb</code>, <code>K:D mix</code>…</dd></div>
+              <div><dt><code>M:3/4</code></dt><dd>Ölçü birimi</dd></div>
+              <div><dt><code>L:1/8</code></dt><dd>Varsayılan nota süresi (sekizlik)</dd></div>
+              <div><dt><code>Q:1/4=120</code></dt><dd>Tempo: dakikada 120 dörtlük</dd></div>
+              <div><dt><code>C D E c c' C,</code></dt><dd>Notalar; küçük harf bir oktav tiz, <code>'</code> yukarı, <code>,</code> aşağı oktav</dd></div>
+              <div><dt><code>A2 A/2 A3/2</code></dt><dd>Süre çarpanları</dd></div>
+              <div><dt><code>^F _B =B</code></dt><dd>Diyez, bemol, natürel</dd></div>
+              <div><dt><code>[CEG] z</code></dt><dd>Akor, sus</dd></div>
+              <div><dt><code>(3abc A&gt;B</code></dt><dd>Üçleme, noktalı ritim</dd></div>
+              <div><dt><code>|: … :| [1 [2</code></dt><dd>Tekrar ve dönüşler</dd></div>
+              <div><dt><code>V:2 clef=perc</code></dt><dd>Davul partisi: <code>F</code> kick, <code>c</code> trampet, <code>g</code> hi-hat, <code>^g</code> açık hi-hat, <code>a</code> crash, <code>f</code> ride, <code>e d A</code> tomlar</dd></div>
+              <div><dt><code>!p! !f! !&gt;!</code></dt><dd>Dinamik ve vurgu</dd></div>
+            </dl>
+          </details>
+        </aside>
+
+        <section id="mixer" class="popover" hidden aria-label="Ses ayarları">
+          <h2>Ses</h2>
+          <label for="vol-master">Genel <output id="out-master">80</output></label>
+          <input id="vol-master" type="range" min="0" max="100" value="80" />
+          <label for="vol-xylo">Ksilofon <output id="out-xylo">100</output></label>
+          <input id="vol-xylo" type="range" min="0" max="100" value="100" />
+          <label for="vol-drums">Davullar <output id="out-drums">100</output></label>
+          <input id="vol-drums" type="range" min="0" max="100" value="100" />
+          <label for="vol-marbles">Bilye tıkırtısı <output id="out-marbles">60</output></label>
+          <input id="vol-marbles" type="range" min="0" max="100" value="60" />
+          <div class="mixer-row">
+            <button id="btn-view" class="ghost small">Görünümü sıfırla</button>
+            <label class="switch"><input id="chk-orbit" type="checkbox" /> Kamera turu</label>
+          </div>
+        </section>
+      </main>
+
+      <footer class="transport">
+        <button id="btn-restart" class="round" title="Başa dön (R)" aria-label="Başa dön">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14M19 5l-9 7 9 7z" /></svg>
+        </button>
+        <button id="btn-play" class="round play" title="Çal / duraklat (boşluk)" aria-label="Çal">
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" /></svg>
+          <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" /></svg>
+        </button>
+        <div class="progress">
+          <span id="time-now" class="time">0:00</span>
+          <label class="sr-only" for="seek">Konum</label>
+          <input id="seek" type="range" min="0" max="1000" value="0" step="1" />
+          <span id="time-total" class="time">0:00</span>
+        </div>
+        <div class="speed">
+          <label for="speed">Hız <output id="out-speed">1,00×</output></label>
+          <input id="speed" type="range" min="50" max="150" value="100" step="5" />
+        </div>
+        <button id="btn-loop" class="chip small" aria-pressed="true" title="Bitince baştan çal">Döngü</button>
+      </footer>
+
+      <div id="hint" class="hint">Çal düğmesiyle başlat · çubuklara ve davullara tıklayarak sen de çal</div>
+      <div id="tooltip" class="tooltip" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
