@@ -418,23 +418,36 @@ svg {
 }
 
 .status p {
+  --dot: var(--muted);
   margin: 0;
-  padding: 6px 10px;
+  padding: 6px 10px 6px 24px;
   border-radius: 8px;
   background: var(--raise);
-  border-left: 3px solid var(--muted);
+  position: relative;
+}
+
+/* Önem derecesi: metnin başında küçük renkli bir nokta */
+.status p::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0.72em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot);
 }
 
 .status .ok {
-  border-left-color: var(--ok);
+  --dot: var(--ok);
 }
 
 .status .warn {
-  border-left-color: var(--warn);
+  --dot: var(--warn);
 }
 
 .status .err {
-  border-left-color: var(--danger);
+  --dot: var(--danger);
 }
 
 .status button {
