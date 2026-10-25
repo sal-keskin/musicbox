@@ -8,6 +8,8 @@
  *   a = crash, f = ride, e = tiz tom, d = orta tom, A = yer tomu
  */
 
+import { CLASSICS, MOUNTAIN_KING } from './classics';
+
 export interface LibraryTune {
   id: string;
   abc: string;
@@ -237,45 +239,7 @@ F, G, A, F, | F, G, A, F, | A, B, C2 | A, B, C2 | C/D/C/B,/ A, F, | C/D/C/B,/ A,
 [Fg] g [cg] g | [Fg] g [cg] g | [Fg] g [cg] g | [Fg] g [cg] c/c/ | [Fa]4 |]
 `;
 
-const mountainKing = `X:11
-T:Dağ Kralının Salonunda
-T:(I Dovregubbens hall – tema)
-C:Edvard Grieg (Peer Gynt)
-M:4/4
-L:1/8
-Q:1/4=92
-K:Bm
-V:1 name="Melodi"
-V:2 name="Bas"
-V:3 name="Davul" clef=perc
-[V:1] !p! B,C DE FD F2 | ^EC ^E2 =E=C E2 | B,C DE FD FB | AF DF A4 |
-B,C DE FD F2 | ^EC ^E2 =E=C E2 | B,C DE FD FB | AF DF A4 |
-[Q:1/4=112] !mf! B,C DE FD F2 | ^EC ^E2 =E=C E2 | B,C DE FD FB | AF DF A4 |
-B,C DE FD F2 | ^EC ^E2 =E=C E2 | B,C DE FD FB | AF DF A4 |
-[Q:1/4=136] !f! Bc de fd f2 | ^ec ^e2 =e=c e2 | Bc de fd fb | af df a4 |
-Bc de fd f2 | ^ec ^e2 =e=c e2 | Bc de fd fb | af df a4 |
-[Q:1/4=166] !ff! [B,B][Cc] [Dd][Ee] [Ff][Dd] [F2f2] | [^E^e][Cc] [^E2^e2] [=E=e][=C=c] [E2e2] | [B,B][Cc] [Dd][Ee] [Ff][Dd] [Ff][Bb] | [Aa][Ff] [Dd][Ff] [A4a4] |
-[B,B][Cc] [Dd][Ee] [Ff][Dd] [F2f2] | [^E^e][Cc] [^E2^e2] [=E=e][=C=c] [E2e2] | [B,B][Cc] [Dd][Ee] [Ff][Dd] [Ff][Bb] | [Aa][Ff] [Dd][Ff] [A4a4] |
-!fff! [B,DFB]2 z2 [B,DFB]2 z2 | [B,4D4F4B4] z4 |]
-[V:2] B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 F,2 B,2 F,2 | C2 ^G,2 =C2 =G,2 | B,2 F,2 B,2 F,2 | D2 A,2 D2 A,2 |
-B,2 z2 B,2 z2 | B,4 z4 |]
-[V:3] !p! A2 z2 A2 z2 | A2 z2 A2 z2 | A2 z2 A2 z2 | A2 z2 A2 z2 |
-A2 z2 A2 z2 | A2 z2 A2 z2 | A2 z2 A2 z2 | A2 z2 A2 A2 |
-!mf! [FA]2 c2 [FA]2 c2 | [FA]2 c2 [FA]2 c2 | [FA]2 c2 [FA]2 c2 | [FA]2 c2 [FA]2 c2 |
-[FA]2 c2 [FA]2 c2 | [FA]2 c2 [FA]2 c2 | [FA]2 c2 [FA]2 c2 | [FA]2 c2 c/c/c/c/ AA |
-!f! [Fa]g [cg]g [Fg]g [cg]g | [Fg]g [cg]g [Fg]g [cg]g | [Fg]g [cg]g [Fg]g [cg]g | [Fg]g [cg]g [Fg]g [cg]g |
-[Fg]g [cg]g [Fg]g [cg]g | [Fg]g [cg]g [Fg]g [cg]g | [Fg]g [cg]g [Fg]g [cg]g | c/c/c/c/ e/e/e/e/ d/d/d/d/ A/A/A/A/ |
-!ff! [Fa][cg] [Fg][cg] [Fg][cg] [Fg][cg] | [Fg][cg] [Fg][cg] [Fg][cg] [Fg][cg] | [Fg][cg] [Fg][cg] [Fg][cg] [Fg][cg] | [Fg][cg] [Fg][cg] [Fg][cg] [Fg][cg] |
-[Fa][cg] [Fg][cg] [Fg][cg] [Fg][cg] | [Fg][cg] [Fg][cg] [Fg][cg] [Fg][cg] | [Fg][cg] [Fg][cg] [Fg][cg] [Fg][cg] | c/c/c/c/ e/e/e/e/ d/d/d/d/ A/A/A/A/ |
-!fff! [Fa]2 z2 [Fa]2 z2 | [Fa]4 z4 |]
-`;
+const mountainKing = MOUNTAIN_KING;
 
 const marbleRain = `X:12
 T:Bilye Yağmuru
@@ -312,6 +276,7 @@ C,8 | [C,G,C]8 |]
 
 export const LIBRARY: LibraryTune[] = [
   { id: 'bilye-yagmuru', abc: marbleRain },
+  ...CLASSICS.slice(0, 2),
   { id: 'korobeiniki', abc: korobeiniki },
   { id: 'nesheye-ovgu', abc: ode },
   { id: 'fur-elise', abc: furElise },
@@ -323,6 +288,7 @@ export const LIBRARY: LibraryTune[] = [
   { id: 'frere-jacques', abc: frereJacques },
   { id: 'twinkle', abc: twinkle },
   { id: 'iyi-ki-dogdun', abc: happyBirthday },
+  ...CLASSICS.slice(2),
 ];
 
 /** Editörde boş bir başlangıç için örnek şablon. */

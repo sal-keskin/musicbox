@@ -118,7 +118,8 @@ src/
     reflector.ts     Yumuşak zemin yansıması
     contactShadow.ts Bir kez pişirilen temas gölgeleri
     merge.ts         Hareketsiz parçaları birleştirip çizim çağrısını azaltma
-  library/tunes.ts   Eser kütüphanesi (ABC)
+  library/tunes.ts   Eser kütüphanesi (ABC) ve çalma sırası
+  library/classics.ts  Kaynaklardan dönüştürülen eserler (ÜRETİLİR, elle düzenlemeyin)
   app.ts             Hepsini bağlayan uygulama ve arayüz
 ```
 
@@ -160,22 +161,56 @@ kare süresini izler ve akıcılık düşerse kendiliğinden bir kademe iner.
 
 ## Kütüphanedeki eserler
 
-Tümü kamu malıdır; düzenlemeler (eşlik ve davul partileri) bu proje için yazıldı.
+Tümü kamu malıdır; ksilofon/davul düzenlemeleri (eşlik ve davul partileri) bu
+proje için yazıldı.
 
-- Bilye Yağmuru (bu proje için özgün beste)
-- Korobeyniki (Rus halk şarkısı, Tetris teması)
-- Neşeye Övgü (Beethoven, 9. Senfoni)
-- Für Elise (Beethoven)
-- Dağ Kralının Salonunda (Grieg, Peer Gynt; tempo giderek hızlanır)
-- Jingle Bells (J. L. Pierpont)
-- Kanon (Pachelbel)
-- Greensleeves (İngiliz halk ezgisi)
-- Minuet (Sol majör, Petzold)
-- Frère Jacques (üç sesli kanon)
-- Twinkle Twinkle Little Star (Fransız halk ezgisi)
-- İyi ki Doğdun (Hill kardeşler)
+| Eser | Besteci / köken | Nota kaynağı |
+| --- | --- | --- |
+| Bilye Yağmuru | bu proje için özgün beste | — |
+| Türk Marşı (Rondo alla Turca, KV 331) | W. A. Mozart | Mutopia Project; yeniçeri davulu eklendi |
+| The Entertainer | Scott Joplin (1902) | Mutopia Project |
+| Korobeyniki (Tetris teması) | Rus halk şarkısı | elle yazıldı |
+| Neşeye Övgü (9. Senfoni) | L. van Beethoven | elle yazıldı |
+| Für Elise | L. van Beethoven | elle yazıldı, Mutopia ile karşılaştırıldı |
+| Dağ Kralının Salonunda (Peer Gynt) | Edvard Grieg | Mutopia ile karşılaştırıldı; tempo 96 → 126 → 160 |
+| Jingle Bells | J. L. Pierpont | elle yazıldı |
+| Kanon | J. Pachelbel | elle yazıldı |
+| Greensleeves | İngiliz halk ezgisi | elle yazıldı |
+| Minuet (Sol majör) | C. Petzold | elle yazıldı |
+| Frère Jacques (üç sesli kanon) | Fransız halk şarkısı | elle yazıldı |
+| Twinkle Twinkle Little Star | Fransız halk ezgisi | elle yazıldı |
+| İyi ki Doğdun | Hill kardeşler | elle yazıldı |
+| Maple Leaf Rag | Scott Joplin (1899) | music21 derlemi |
+| Sonata facile (KV 545, I. bölüm) | W. A. Mozart | music21 derlemi |
+| Eine kleine Nachtmusik (KV 525, açılış) | W. A. Mozart | Mutopia Project |
+| La donna è mobile (Rigoletto) | Giuseppe Verdi | music21 derlemi |
+| Do majör Prelüd (BWV 846) | J. S. Bach | Mutopia Project |
+| Brahms Ninnisi (op. 49 no. 4) | Johannes Brahms | Mutopia Project |
+| Turkey in the Straw | Amerikan halk ezgisi | Ryan's Mammoth Collection (1883) |
+| Arkansas Traveler | Amerikan halk ezgisi | Cole's 1000 Fiddle Tunes / Ryan's |
+| Haste to the Wedding | İrlanda halk ezgisi | Ryan's Mammoth Collection (1883) |
+| Yankee Doodle | Amerikan halk ezgisi | J. Campin'in fife derlemesi (music21) |
+
+Mutopia Project ve music21 derlemindeki dosyalar yalnızca **veri olarak**
+okunur (LilyPond ya da başka bir program çalıştırılmaz). Dönüştürücüler:
+
+- `scripts/mxl2abc.py`: MusicXML → ABC (ölçü aralığı, parti seçimi, tekrar
+  çizgileri, tonalite).
+- `scripts/ly2abc.py`: LilyPond'un sade bir alt kümesini okuyan ayrıştırıcı
+  (`\relative`, nota adları dilleri, süreler, akorlar, bağlar, triyoleler,
+  süslemeler, `\repeat volta` + `\alternative`).
+- `scripts/build_classics.py`: eserleri bu iki dönüştürücüyle kaynaklardan
+  alır, bas/davul düzenlemesini ekler ve `src/library/classics.ts` dosyasını
+  üretir. Türk Marşı gibi bazı bölümler kaynak dosyadan elle aktarılmıştır.
+
+```bash
+python3 -I scripts/build_classics.py \
+  --mutopia <mutopiaproject>/ftp --music21 <music21>/corpus \
+  > src/library/classics.ts
+```
 
 Yeni bir eser eklemek için `src/library/tunes.ts` dosyasına ABC metnini koyup
 `LIBRARY` listesine eklemek yeterli. `npm test` her eserin uyarısız
-ayrıştırıldığını, ölçü sürelerinin tuttuğunu ve partilerin eşit uzunlukta
-olduğunu otomatik denetler.
+ayrıştırıldığını, ölçü sürelerinin tuttuğunu (tekrar başındaki ve sonundaki
+eksik ölçülerin birbirini tamamlaması dahil), partilerin eşit uzunlukta
+olduğunu ve notaların ksilofona sığdığını otomatik denetler.

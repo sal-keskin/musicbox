@@ -259,3 +259,20 @@ describe('dayanıklılık', () => {
     expect(s.totalBeats).toBe(12);
   });
 });
+
+describe('ölçü denetimi', () => {
+  it('tekrarın öncüsünü tamamlayan kısa son ölçü hata sayılmaz', () => {
+    const s = parseAbc('X:1\nM:2/4\nL:1/16\nK:C\n|: BAGA | c2z2 dcBc | e4 :|\n|: cdef | g8 | e4 :|\nc8 |]');
+    expect(s.barIssues).toEqual([]);
+  });
+
+  it('art arda iki kısa ölçü bir ölçü ediyorsa hata sayılmaz', () => {
+    const s = parseAbc('X:1\nM:2/4\nL:1/16\nK:C\nc8 | e4 :| BAGA | c8 | c8 |]');
+    expect(s.barIssues).toEqual([]);
+  });
+
+  it('gerçekten eksik ölçü yine bildirilir', () => {
+    const s = parseAbc('X:1\nM:2/4\nL:1/16\nK:C\nc8 | e6 | c8 | c8 |]');
+    expect(s.barIssues.map((b) => b.bar)).toEqual([2]);
+  });
+});

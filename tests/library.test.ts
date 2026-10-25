@@ -69,7 +69,7 @@ describe('Timeline', () => {
 
   it('Mountain King hızlanır', () => {
     const s = parseAbc(LIBRARY.find((t) => t.id === 'dag-krali')!.abc);
-    expect(s.tempo.map((t) => t.qpm)).toEqual([92, 112, 136, 166]);
+    expect(s.tempo.map((t) => t.qpm)).toEqual([96, 126, 160]);
   });
 
   it('tekrarlar açıldığında Für Elise\'in ölçü sayısı doğru', () => {

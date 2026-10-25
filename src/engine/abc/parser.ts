@@ -938,8 +938,9 @@ class AbcParser {
     if (this.meterGiven) {
       for (const id of this.voiceOrder) {
         const bars = this.voices.get(id)!.bars;
+        const ok = completingBars(bars);
         bars.forEach((bar, idx) => {
-          if (idx === 0 || idx === bars.length - 1) return; // öncü ve son ölçü kısa olabilir
+          if (idx === 0 || idx === bars.length - 1 || ok.has(idx)) return; // öncü ve son ölçü kısa olabilir
           if (Math.abs(bar.length - bar.expected) > 1e-6) {
             const first = bar.elements.find((e): e is NotesElement => e.kind === 'notes');
             barIssues.push({
@@ -1185,6 +1186,32 @@ export function expandRepeats(bars: { startRepeat: boolean; endRepeat: boolean; 
     i++;
   }
   return order;
+}
+
+/**
+ * Birbirini tamamlayan kısa ölçüler (halk müziği yazımında yaygın):
+ *  - tekrarın sonundaki kısa ölçü + tekrarın başındaki öncü ölçü (|: öncü ... kısa :|)
+ *  - art arda gelen iki kısa ölçü (ör. :| işaretinden sonra yeni bölümün öncüsü)
+ * Toplamları tam bir ölçü ediyorsa ikisi de hatalı sayılmaz.
+ */
+function completingBars(bars: { length: number; expected: number; startRepeat: boolean; endRepeat: boolean }[]): Set<number> {
+  const ok = new Set<number>();
+  const short = (i: number) => bars[i].length < bars[i].expected - 1e-6;
+  const sums = (i: number, j: number) => Math.abs(bars[i].length + bars[j].length - bars[i].expected) < 1e-6;
+  let repeatStart = 0;
+  for (let i = 0; i < bars.length; i++) {
+    if (bars[i].startRepeat) repeatStart = i;
+    if (bars[i].endRepeat && short(i) && short(repeatStart) && sums(i, repeatStart)) {
+      ok.add(i);
+      ok.add(repeatStart);
+    }
+    if (bars[i].endRepeat) repeatStart = i + 1;
+    if (i + 1 < bars.length && short(i) && short(i + 1) && sums(i, i + 1)) {
+      ok.add(i);
+      ok.add(i + 1);
+    }
+  }
+  return ok;
 }
 
 /** Bağlı (tie) notaları tek bir uzun notada birleştirir. */
