@@ -1,58 +1,116 @@
 /**
- * Makinenin 3B parçalarını kuran yardımcılar: sahne zemini, ksilofon,
- * davul seti, nozullar, oluklar, üst güverte ve toplama kutusu.
+ * Makinenin 3B parçalarını kuran yardımcılar: sahne, fon, ksilofon, davul seti,
+ * nozullar, oluklar, üst güverte, toplama kutusu ve asansör.
+ *
+ * Malzemeler "gerçekçi ama stilize" bir oyuncak hissi için seçildi:
+ * satin ceviz, fırçalanmış pirinç, cilalı renkli tuşlar, saten zil metali,
+ * cam bilyeler. Hareket etmeyen parçalar sonradan malzemeye göre birleştirilir.
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DrumPiece } from '../engine/types';
 import { barKey, drumKey, gutterY, MARBLE_RADIUS, type BarSpec, type DrumSpec, type Gutter, type MachineLayout, type Vec3 } from './layout';
-import { cymbalTexture, drumHeadTexture, glowTexture, rng, woodTexture } from './textures';
+import { mergeStatic } from './merge';
+import { cymbalTexture, drumHeadTexture, glowTexture, marbleTexture, rng, skyTexture, stageTexture, walnutTexture, woodTexture } from './textures';
+
+/**
+ * Katmanlar: 0 statik makine (yansır), 1 hareketli cisimler (bilyeler),
+ * 2 zemin (yansımaz), 3 saydam/ışıklı efektler (AO ve alan derinliği
+ * geçişlerinde yok sayılır, yoksa görünmez geometrileri gölge bırakır).
+ */
+export const LAYER_DYNAMIC = 1;
+export const LAYER_FLOOR = 2;
+export const LAYER_FX = 3;
 
 export interface Materials {
-  wood: THREE.MeshStandardMaterial;
-  darkWood: THREE.MeshStandardMaterial;
-  lightWood: THREE.MeshStandardMaterial;
-  brass: THREE.MeshStandardMaterial;
-  chrome: THREE.MeshStandardMaterial;
+  wood: THREE.MeshPhysicalMaterial;
+  darkWood: THREE.MeshPhysicalMaterial;
+  lightWood: THREE.MeshPhysicalMaterial;
+  brass: THREE.MeshPhysicalMaterial;
+  polishedBrass: THREE.MeshPhysicalMaterial;
+  chrome: THREE.MeshPhysicalMaterial;
   felt: THREE.MeshStandardMaterial;
   shell: THREE.MeshPhysicalMaterial;
-  head: THREE.MeshStandardMaterial;
-  cymbal: THREE.MeshStandardMaterial;
+  head: THREE.MeshPhysicalMaterial;
+  cymbal: THREE.MeshPhysicalMaterial;
   grain: THREE.Texture;
+  marble: THREE.MeshPhysicalMaterial;
 }
 
 export function createMaterials(): Materials {
-  const woodMap = woodTexture('#b9824f', '#6b3d1c', 7);
-  woodMap.repeat.set(2, 1);
-  const darkMap = woodTexture('#7a4a2a', '#3a1d0c', 21);
-  const lightMap = woodTexture('#d9b285', '#9c6b3c', 33);
-  const grain = woodTexture('#ffffff', '#b9ad9c', 5);
+  const walnut = walnutTexture(7);
+  walnut.repeat.set(1.5, 1);
+  const darkWalnut = walnutTexture(21, true);
+  const maple = woodTexture('#e2c08f', '#a87a45', 33);
+  const grain = woodTexture('#ffffff', '#c9bfb0', 5);
+  const satin = { roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.32, metalness: 0 };
   return {
-    wood: new THREE.MeshStandardMaterial({ map: woodMap, roughness: 0.55, metalness: 0 }),
-    darkWood: new THREE.MeshStandardMaterial({ map: darkMap, roughness: 0.6, metalness: 0 }),
-    lightWood: new THREE.MeshStandardMaterial({ map: lightMap, roughness: 0.5, metalness: 0 }),
-    brass: new THREE.MeshStandardMaterial({ color: 0xd8a64c, metalness: 1, roughness: 0.27 }),
-    chrome: new THREE.MeshStandardMaterial({ color: 0xe9eef4, metalness: 1, roughness: 0.16 }),
-    felt: new THREE.MeshStandardMaterial({ color: 0x9a2f3c, roughness: 1 }),
-    shell: new THREE.MeshPhysicalMaterial({
-      color: 0xd8344f,
-      roughness: 0.3,
-      metalness: 0.15,
-      clearcoat: 1,
-      clearcoatRoughness: 0.12,
+    wood: new THREE.MeshPhysicalMaterial({ map: walnut, ...satin }),
+    darkWood: new THREE.MeshPhysicalMaterial({ map: darkWalnut, ...satin, roughness: 0.48 }),
+    lightWood: new THREE.MeshPhysicalMaterial({ map: maple, ...satin }),
+    // Fırçalanmış pirinç: anizotropi parlamayı fırça izleri boyunca uzatır.
+    brass: new THREE.MeshPhysicalMaterial({
+      color: 0xd9a64a,
+      metalness: 1,
+      roughness: 0.34,
+      anisotropy: 0.75,
+      anisotropyRotation: Math.PI / 2,
     }),
-    head: new THREE.MeshStandardMaterial({ map: drumHeadTexture(), roughness: 0.75, emissive: 0xffffff, emissiveIntensity: 0 }),
-    cymbal: new THREE.MeshStandardMaterial({
+    polishedBrass: new THREE.MeshPhysicalMaterial({ color: 0xe6b55a, metalness: 1, roughness: 0.16, clearcoat: 0.5 }),
+    chrome: new THREE.MeshPhysicalMaterial({ color: 0xeef2f7, metalness: 1, roughness: 0.1 }),
+    felt: new THREE.MeshStandardMaterial({ color: 0x8e2a3a, roughness: 1 }),
+    shell: new THREE.MeshPhysicalMaterial({
+      color: 0xd22c48,
+      metalness: 0.35,
+      roughness: 0.32,
+      clearcoat: 1,
+      clearcoatRoughness: 0.05,
+      sheen: 0.3,
+      sheenColor: new THREE.Color(0xff8a9a),
+    }),
+    head: new THREE.MeshPhysicalMaterial({ map: drumHeadTexture(), roughness: 0.55, sheen: 0.5, sheenRoughness: 0.6, clearcoat: 0.2 }),
+    cymbal: new THREE.MeshPhysicalMaterial({
       map: cymbalTexture(),
-      color: 0xffffff,
-      metalness: 0.85,
-      roughness: 0.3,
+      color: 0xfff1d6,
+      metalness: 1,
+      roughness: 0.26,
+      anisotropy: 0.85,
       side: THREE.DoubleSide,
-      emissive: 0xffc861,
-      emissiveIntensity: 0,
     }),
     grain,
+    marble: marbleMaterial(false),
   };
+}
+
+/**
+ * Cam bilye malzemesi. Örnek (instance) rengi camın rengidir; ayrıca yüzün
+ * kameraya baktığı yerde güçlenen hafif bir iç ışıma eklenir: ışık camın
+ * içinden geçiyormuş gibi.
+ */
+export function marbleMaterial(transmission: boolean): THREE.MeshPhysicalMaterial {
+  const m = new THREE.MeshPhysicalMaterial({
+    map: marbleTexture(),
+    roughness: 0.06,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.03,
+    ior: 1.5,
+    iridescence: 0.2,
+    transmission: transmission ? 0.7 : 0,
+    thickness: transmission ? 0.16 : 0,
+  });
+  m.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+#ifdef USE_INSTANCING_COLOR
+float facing = max(dot(normal, normalize(vViewPosition)), 0.0);
+totalEmissiveRadiance += vColor * (0.1 + 0.42 * pow(facing, 2.5));
+#endif`,
+    );
+  };
+  m.customProgramCacheKey = () => `marble-${transmission}`;
+  return m;
 }
 
 function shadowed<T extends THREE.Object3D>(o: T, cast = true, receive = true): T {
@@ -72,66 +130,129 @@ function rod(a: Vec3, b: Vec3, radius: number, material: THREE.Material, segment
   return shadowed(mesh);
 }
 
-/** a ve b arasında, kesiti w×h olan kutu kiriş. */
+/** a ve b arasında, kesiti w×h olan pahlı kutu kiriş. */
 function beam(a: Vec3, b: Vec3, w: number, h: number, material: THREE.Material): THREE.Mesh {
   const dir = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
   const len = dir.length();
-  const geo = new RoundedBoxGeometry(len, h, w, 2, Math.min(w, h) * 0.25);
+  const geo = new RoundedBoxGeometry(len, h, w, 3, Math.min(w, h) * 0.3);
   const mesh = new THREE.Mesh(geo, material);
   mesh.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir.normalize());
   return shadowed(mesh);
 }
 
-function box(w: number, h: number, d: number, material: THREE.Material, x: number, y: number, z: number, r = 0.03): THREE.Mesh {
-  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2)), material);
+function box(w: number, h: number, d: number, material: THREE.Material, x: number, y: number, z: number, r = 0.035): THREE.Mesh {
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2)), material);
   mesh.position.set(x, y, z);
   return shadowed(mesh);
 }
 
+function glowMaterial(color: THREE.ColorRepresentation, intensity = 1): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity) });
+}
+
 // ---------------------------------------------------------------------------
-// Sahne zemini
+// Sahne, fon ve ışık dizileri
 // ---------------------------------------------------------------------------
 
-export function buildStage(layout: MachineLayout): THREE.Group {
+export interface StageVisual {
+  group: THREE.Group;
+  /** Temas gölgesi pişirilirken gizlenecek zemin parçaları. */
+  floorParts: THREE.Object3D[];
+  center: THREE.Vector3;
+  radius: number;
+}
+
+export function buildStage(layout: MachineLayout): StageVisual {
   const g = new THREE.Group();
   const cx = (layout.collector.x + layout.kitX + 2.6) / 2;
+  const radius = 14;
+  const floorParts: THREE.Object3D[] = [];
 
-  const stageMat = new THREE.MeshStandardMaterial({ color: 0x3b3552, roughness: 0.92 });
-  const stage = new THREE.Mesh(new THREE.CylinderGeometry(14, 14.4, 0.4, 96), stageMat);
-  stage.position.set(cx, -0.2, 0);
-  stage.receiveShadow = true;
-  g.add(stage);
+  const top = new THREE.Mesh(
+    new THREE.CircleGeometry(radius, 128),
+    new THREE.MeshPhysicalMaterial({ map: stageTexture(), roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
+  );
+  top.rotation.x = -Math.PI / 2;
+  top.position.set(cx, 0, 0);
+  top.receiveShadow = true;
+  const side = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius + 0.35, 0.4, 128, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x1b1628, roughness: 0.7 }),
+  );
+  side.position.set(cx, -0.2, 0);
+  g.add(top, side);
 
-  const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8a64c, metalness: 1, roughness: 0.35 });
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(14.2, 0.06, 8, 160), rimMat);
+  // Sahne kenarında sıcak ışık şeridi (bloom ile parlar)
+  const rimColor = new THREE.Color(0xff9d4d);
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(radius + 0.02, 0.045, 10, 220),
+    new THREE.MeshStandardMaterial({ color: 0x3a2412, emissive: rimColor, emissiveIntensity: 1.6 }),
+  );
   rim.rotation.x = Math.PI / 2;
-  rim.position.set(cx, 0.0, 0);
+  rim.position.set(cx, 0.01, 0);
+  rim.userData.bloom = glowMaterial(rimColor, 0.9);
   g.add(rim);
 
-  const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(80, 64),
-    new THREE.MeshStandardMaterial({ color: 0x1e1a2c, roughness: 1 }),
-  );
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(90, 64), new THREE.MeshStandardMaterial({ color: 0x15111f, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(cx, -0.4, 0);
   ground.receiveShadow = true;
   g.add(ground);
 
-  // Makinenin altına sıcak bir ışık lekesi
-  const glow = new THREE.Mesh(
-    new THREE.PlaneGeometry(26, 12),
+  // Makinenin önüne sıcak bir ışık havuzu: ön plan aydınlık, arka plan karanlık
+  const pool = new THREE.Mesh(
+    new THREE.PlaneGeometry(30, 16),
     new THREE.MeshBasicMaterial({
-      map: glowTexture('rgba(255,190,120,0.33)', 'rgba(255,190,120,0)'),
+      map: glowTexture('rgba(255,176,110,0.16)', 'rgba(255,176,110,0)'),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     }),
   );
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.set(cx, 0.012, 0.6);
-  g.add(glow);
-  return g;
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(cx, 0.008, 2.2);
+  pool.userData.bloom = 'hide';
+  g.add(pool);
+
+  for (const o of [top, side, ground, pool]) o.layers.set(LAYER_FLOOR);
+  floorParts.push(top, side, ground, pool, rim);
+
+  // Fon: arkada kavisli, koyu bir perde
+  const backdrop = new THREE.Mesh(
+    new THREE.CylinderGeometry(34, 34, 26, 96, 1, true, Math.PI * 0.62, Math.PI * 0.76),
+    new THREE.MeshBasicMaterial({ map: skyTexture('#0d0b18', '#1d1730', '#2e2244'), side: THREE.BackSide, fog: false }),
+  );
+  backdrop.position.set(cx, 11, 6);
+  backdrop.userData.bloom = 'hide';
+  g.add(backdrop);
+  floorParts.push(backdrop);
+
+  // Arka planda yumuşak ışık dizileri: alan derinliğiyle bokeh'e dönüşür
+  const bulbs = 120;
+  const bulbMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ toneMapped: false }), bulbs);
+  const r = rng(42);
+  const m = new THREE.Matrix4();
+  const palette = [0xffb35c, 0xff7aa8, 0x9f8cff, 0x6fd6ff, 0xffe08a];
+  for (let i = 0; i < bulbs; i++) {
+    const row = i % 3;
+    const t = (Math.floor(i / 3) / (bulbs / 3)) * 2 - 1;
+    const angle = Math.PI * 0.5 + t * 1.15;
+    const dist = 19 + row * 4.5;
+    const x = cx + Math.cos(angle) * dist * 1.25;
+    const z = -Math.sin(angle) * dist + 3;
+    const y = 4.5 + row * 2.2 + Math.cos(t * 9 + row) * 0.6;
+    const s = 0.8 + r() * 0.7;
+    m.compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
+    bulbMesh.setMatrixAt(i, m);
+    const c = new THREE.Color(palette[Math.floor(r() * palette.length)]).multiplyScalar(1.6 + r());
+    bulbMesh.setColorAt(i, c);
+  }
+  bulbMesh.userData.bloom = 'self';
+  g.add(bulbMesh);
+  floorParts.push(bulbMesh);
+
+  return { group: g, floorParts, center: new THREE.Vector3(cx, 0, 0), radius };
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +263,9 @@ export interface BarVisual {
   spec: BarSpec;
   mesh: THREE.Mesh;
   material: THREE.MeshPhysicalMaterial;
+  /** Parıltı çiziminde kullanılan, vuruşla parlayan malzeme. */
+  glow: THREE.MeshBasicMaterial;
+  color: THREE.Color;
   baseY: number;
 }
 
@@ -154,20 +278,24 @@ export function buildXylophone(layout: MachineLayout, mats: Materials, pickables
     const material = new THREE.MeshPhysicalMaterial({
       color,
       map: mats.grain,
-      roughness: 0.34,
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.2,
+      roughness: 0.28,
+      clearcoat: 0.7,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 0.55,
       emissive: color,
       emissiveIntensity: 0,
     });
-    const geo = new RoundedBoxGeometry(spec.width, spec.thickness, spec.length, 2, Math.min(0.035, spec.thickness * 0.4));
+    const bevel = Math.min(0.05, spec.thickness * 0.42);
+    const geo = new RoundedBoxGeometry(spec.width, spec.thickness, spec.length, 4, bevel);
     const mesh = shadowed(new THREE.Mesh(geo, material));
     const baseY = spec.top - spec.thickness / 2;
     mesh.position.set(spec.x, baseY, spec.z);
     mesh.userData.targetKey = barKey(spec.midi);
+    const glow = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    mesh.userData.bloom = glow;
     group.add(mesh);
     pickables.push(mesh);
-    bars.set(spec.midi, { spec, mesh, material, baseY });
+    bars.set(spec.midi, { spec, mesh, material, glow, color, baseY });
   }
 
   // Çubukların taşıyıcı rayları (düğüm noktalarında, keçe kaplı)
@@ -181,13 +309,12 @@ export function buildXylophone(layout: MachineLayout, mats: Materials, pickables
       const a = { x: first.x - 0.22, y: yOf(first), z: zOf(first) };
       const b = { x: last.x + 0.22, y: yOf(last), z: zOf(last) };
       group.add(rod(a, b, 0.028, mats.felt, 8));
-      // Rayın altındaki ahşap kiriş
       group.add(beam({ ...a, y: a.y - 0.12 }, { ...b, y: b.y - 0.12 }, 0.12, 0.16, mats.wood));
     }
   }
 
-  // Rezonatör boruları (pirinç)
-  const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, false);
+  // Rezonatör boruları (fırçalanmış pirinç)
+  const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 24, 1, false);
   const tubes = new THREE.InstancedMesh(tubeGeo, mats.brass, layout.bars.length);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -199,8 +326,7 @@ export function buildXylophone(layout: MachineLayout, mats: Materials, pickables
     m.compose(new THREE.Vector3(spec.x, top - len / 2, spec.z), q, new THREE.Vector3(r, len, r));
     tubes.setMatrixAt(i, m);
   });
-  tubes.castShadow = true;
-  tubes.receiveShadow = true;
+  shadowed(tubes);
   group.add(tubes);
 
   // Ayaklar ve gergi kirişleri
@@ -212,7 +338,10 @@ export function buildXylophone(layout: MachineLayout, mats: Materials, pickables
     { x: nat[nat.length - 1].x + 0.32, zf: nat[nat.length - 1].length * 0.85, zb: -0.16 - sh[sh.length - 1].length * 0.85 },
   ];
   for (const e of ends) {
-    for (const z of [e.zf, e.zb]) group.add(box(0.17, legY, 0.17, mats.darkWood, e.x, legY / 2, z, 0.04));
+    for (const z of [e.zf, e.zb]) {
+      group.add(box(0.17, legY, 0.17, mats.darkWood, e.x, legY / 2, z, 0.045));
+      group.add(box(0.21, 0.06, 0.21, mats.polishedBrass, e.x, 0.03, z, 0.02));
+    }
     group.add(beam({ x: e.x, y: legY, z: e.zf + 0.1 }, { x: e.x, y: legY, z: e.zb - 0.1 }, 0.16, 0.18, mats.wood));
     group.add(beam({ x: e.x, y: 0.35, z: e.zf }, { x: e.x, y: 0.35, z: e.zb }, 0.1, 0.1, mats.darkWood));
   }
@@ -220,6 +349,7 @@ export function buildXylophone(layout: MachineLayout, mats: Materials, pickables
   group.add(beam({ x: ends[0].x, y: 0.35, z: 0 }, { x: ends[1].x, y: 0.35, z: 0 }, 0.12, 0.12, mats.darkWood));
   group.add(box(0.15, 0.35, 0.15, mats.darkWood, midX, 0.175, 0, 0.03));
 
+  mergeStatic(group, (o) => pickables.includes(o));
   return { group, bars };
 }
 
@@ -232,7 +362,9 @@ export interface DrumVisual {
   /** Vuruşta zıplayan/titreyen parça. */
   body: THREE.Object3D;
   head?: THREE.Mesh;
-  /** Zil eksen dönüşü için. */
+  /** Parıltı çiziminde vuruşla parlayan malzeme. */
+  glow: THREE.MeshBasicMaterial;
+  glowColor: THREE.Color;
   baseTilt: number;
 }
 
@@ -245,12 +377,12 @@ function kickHeadTexture(): THREE.CanvasTexture {
   grad.addColorStop(1, '#e8dfcd');
   g.fillStyle = grad;
   g.fillRect(0, 0, 512, 512);
-  g.strokeStyle = '#d8344f';
+  g.strokeStyle = '#d22c48';
   g.lineWidth = 14;
   g.beginPath();
   g.arc(256, 256, 170, 0, Math.PI * 2);
   g.stroke();
-  g.fillStyle = '#d8344f';
+  g.fillStyle = '#d22c48';
   g.font = 'bold 82px "Trebuchet MS", "Segoe UI", sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -268,9 +400,10 @@ function cymbalGeometry(radius: number): THREE.LatheGeometry {
     new THREE.Vector2(radius * 0.2, -0.03),
     new THREE.Vector2(radius * 0.24, -0.045),
     new THREE.Vector2(radius * 0.6, -0.07),
-    new THREE.Vector2(radius, -0.1),
+    new THREE.Vector2(radius * 0.97, -0.098),
+    new THREE.Vector2(radius, -0.102),
   ];
-  return new THREE.LatheGeometry(pts, 64);
+  return new THREE.LatheGeometry(pts, 72);
 }
 
 function tripod(group: THREE.Group, mats: Materials, x: number, z: number, height: number, spread = 0.38): void {
@@ -284,7 +417,10 @@ function tripod(group: THREE.Group, mats: Materials, x: number, z: number, heigh
 export function buildDrums(layout: MachineLayout, mats: Materials, pickables: THREE.Object3D[]): { group: THREE.Group; drums: Map<DrumPiece, DrumVisual> } {
   const group = new THREE.Group();
   const drums = new Map<DrumPiece, DrumVisual>();
-  const snareShell = new THREE.MeshStandardMaterial({ color: 0xdfe5ec, metalness: 1, roughness: 0.22 });
+  const animated: THREE.Object3D[] = [];
+  const snareShell = new THREE.MeshPhysicalMaterial({ color: 0xe3e8ee, metalness: 1, roughness: 0.2, anisotropy: 0.6 });
+  const headGlowColor = new THREE.Color(1, 0.96, 0.9);
+  const cymbalGlowColor = new THREE.Color(1, 0.78, 0.4);
 
   for (const d of layout.drums) {
     const key = drumKey(d.piece);
@@ -292,29 +428,30 @@ export function buildDrums(layout: MachineLayout, mats: Materials, pickables: TH
       const body = new THREE.Group();
       body.position.set(d.x, d.top - d.depth / 2, d.z);
       const shellMat = d.piece === 'snare' ? snareShell : mats.shell;
-      const shell = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(d.radius, d.radius, d.depth, 48, 1, true), shellMat));
+      const shell = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(d.radius, d.radius, d.depth, 56, 1, true), shellMat));
       body.add(shell);
       const headMat = d.piece === 'kick' ? mats.head.clone() : mats.head;
       if (d.piece === 'kick') headMat.map = kickHeadTexture();
-      const head = shadowed(new THREE.Mesh(new THREE.CircleGeometry(d.radius * 0.985, 48), headMat));
+      const head = shadowed(new THREE.Mesh(new THREE.CircleGeometry(d.radius * 0.985, 56), headMat));
       head.rotation.x = -Math.PI / 2;
       head.position.y = d.depth / 2 + 0.004;
+      const glow = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      head.userData.bloom = glow;
       body.add(head);
-      const bottom = new THREE.Mesh(new THREE.CircleGeometry(d.radius * 0.985, 48), mats.head);
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(d.radius * 0.985, 56), mats.head);
       bottom.rotation.x = Math.PI / 2;
       bottom.position.y = -d.depth / 2;
       body.add(bottom);
       for (const y of [d.depth / 2, -d.depth / 2]) {
-        const rim = shadowed(new THREE.Mesh(new THREE.TorusGeometry(d.radius + 0.008, 0.026, 10, 56), mats.chrome));
+        const rim = shadowed(new THREE.Mesh(new THREE.TorusGeometry(d.radius + 0.008, 0.026, 12, 64), mats.chrome));
         rim.rotation.x = Math.PI / 2;
         rim.position.y = y;
         body.add(rim);
       }
-      // Gerdirme kulakları
       const lugs = Math.round(6 + d.radius * 4);
       for (let i = 0; i < lugs; i++) {
         const a = (i / lugs) * Math.PI * 2;
-        const lug = new THREE.Mesh(new RoundedBoxGeometry(0.05, Math.min(0.2, d.depth * 0.5), 0.05, 1, 0.015), mats.chrome);
+        const lug = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.05, Math.min(0.2, d.depth * 0.5), 0.05, 2, 0.018), mats.chrome));
         lug.position.set(Math.cos(a) * (d.radius + 0.02), 0, Math.sin(a) * (d.radius + 0.02));
         body.add(lug);
       }
@@ -322,6 +459,8 @@ export function buildDrums(layout: MachineLayout, mats: Materials, pickables: TH
       head.userData.targetKey = key;
       pickables.push(shell, head);
       group.add(body);
+      animated.push(body);
+      mergeStatic(body, (o) => pickables.includes(o));
 
       const bottomY = d.top - d.depth;
       if (d.piece === 'kick') {
@@ -336,19 +475,22 @@ export function buildDrums(layout: MachineLayout, mats: Materials, pickables: TH
       } else {
         tripod(group, mats, d.x, d.z, bottomY);
       }
-      drums.set(d.piece, { spec: d, body, head, baseTilt: 0 });
+      drums.set(d.piece, { spec: d, body, head, glow, glowColor: headGlowColor, baseTilt: 0 });
     } else {
       const pivot = new THREE.Group();
       pivot.position.set(d.x, d.top, d.z);
       pivot.rotation.x = d.tilt;
       const cym = shadowed(new THREE.Mesh(cymbalGeometry(d.radius), mats.cymbal));
+      const glow = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+      cym.userData.bloom = glow;
       pivot.add(cym);
       cym.userData.targetKey = key;
       pickables.push(cym);
-      const nut = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), mats.chrome);
+      const nut = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), mats.chrome);
       nut.position.y = 0.02;
       pivot.add(nut);
       group.add(pivot);
+      animated.push(pivot);
       if (d.piece === 'hihatClosed') {
         const lower = shadowed(new THREE.Mesh(cymbalGeometry(d.radius), mats.cymbal));
         lower.rotation.x = Math.PI;
@@ -360,26 +502,40 @@ export function buildDrums(layout: MachineLayout, mats: Materials, pickables: TH
       } else {
         tripod(group, mats, d.x, d.z, d.top - 0.03, 0.45);
       }
-      drums.set(d.piece, { spec: d, body: pivot, baseTilt: d.tilt });
+      drums.set(d.piece, { spec: d, body: pivot, glow, glowColor: cymbalGlowColor, baseTilt: d.tilt });
     }
   }
+  mergeStatic(group, (o) => pickables.includes(o) || animated.includes(o));
   return { group, drums };
 }
 
 // ---------------------------------------------------------------------------
-// Makine: üst güverte, nozullar, oluklar, toplama kutusu
+// Makine: üst güverte, nozullar, oluklar, toplama kutusu, asansör
 // ---------------------------------------------------------------------------
 
 export interface MachineVisual {
   group: THREE.Group;
-  /** Asansördeki kovalar (zamanla döner). */
-  lift: { cups: THREE.InstancedMesh; bottom: number; top: number; x: number; z: number; count: number };
+  /** Asansördeki kovalar ve taşıdıkları bilyeler (zamanla döner). */
+  lift: {
+    cups: THREE.InstancedMesh;
+    marbles: THREE.InstancedMesh;
+    bottom: number;
+    top: number;
+    x: number;
+    z: number;
+    count: number;
+  };
   deckY: number;
+}
+
+function marbleGlow(k: number): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k) });
 }
 
 export function buildMachine(layout: MachineLayout, mats: Materials): MachineVisual {
   const group = new THREE.Group();
   const targets = [...layout.targets.values()].filter((t) => t.key !== drumKey('hihatOpen'));
+  const keep: THREE.Object3D[] = [];
 
   // --- Üst güverte -------------------------------------------------------
   const maxNozzle = Math.max(...targets.map((t) => t.nozzle.y));
@@ -390,13 +546,12 @@ export function buildMachine(layout: MachineLayout, mats: Materials): MachineVis
   const x1 = layout.kitX + 2.75;
   const z0 = -2.05;
   const z1 = 1.75;
-  const deck = box(x1 - x0, deckH, z1 - z0, mats.wood, (x0 + x1) / 2, deckY, (z0 + z1) / 2, 0.08);
+  const deck = box(x1 - x0, deckH, z1 - z0, mats.wood, (x0 + x1) / 2, deckY, (z0 + z1) / 2, 0.1);
   deck.castShadow = false;
+  keep.push(deck);
   group.add(deck);
-  // Güverte kenarında pirinç şerit
-  group.add(beam({ x: x0, y: deckY - 0.05, z: z1 + 0.01 }, { x: x1, y: deckY - 0.05, z: z1 + 0.01 }, 0.03, 0.06, mats.brass));
+  group.add(beam({ x: x0 + 0.05, y: deckY - 0.04, z: z1 + 0.012 }, { x: x1 - 0.05, y: deckY - 0.04, z: z1 + 0.012 }, 0.03, 0.07, mats.polishedBrass));
 
-  // Direkler
   // Ortadaki direk yalnızca arkada: önde davulların görüntüsünü kesmesin.
   const posts: [number, number][] = [
     [x0 + 0.25, z0 + 0.25],
@@ -406,16 +561,18 @@ export function buildMachine(layout: MachineLayout, mats: Materials): MachineVis
     [x1 - 0.25, z1 - 0.25],
   ];
   for (const [px, pz] of posts) {
-    const post = box(0.2, deckBottom, 0.2, mats.darkWood, px, deckBottom / 2, pz, 0.05);
+    const post = box(0.2, deckBottom, 0.2, mats.darkWood, px, deckBottom / 2, pz, 0.06);
     post.castShadow = false;
+    keep.push(post);
     group.add(post);
+    group.add(box(0.26, 0.08, 0.26, mats.polishedBrass, px, 0.04, pz, 0.025));
   }
 
   // --- Nozul boruları ----------------------------------------------------
-  const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
+  const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true);
   const tubes = new THREE.InstancedMesh(tubeGeo, mats.brass, targets.length);
-  const collarGeo = new THREE.TorusGeometry(1, 0.32, 10, 24);
-  const collarMat = new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.2 });
+  const collarGeo = new THREE.TorusGeometry(1, 0.32, 12, 28);
+  const collarMat = new THREE.MeshPhysicalMaterial({ roughness: 0.25, metalness: 0.1, clearcoat: 1 });
   const collars = new THREE.InstancedMesh(collarGeo, collarMat, targets.length);
   const m = new THREE.Matrix4();
   const flat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
@@ -430,15 +587,15 @@ export function buildMachine(layout: MachineLayout, mats: Materials): MachineVis
     collars.setMatrixAt(i, m);
     collars.setColorAt(i, new THREE.Color().setRGB(...t.color, THREE.SRGBColorSpace));
   });
-  tubes.castShadow = true;
-  collars.castShadow = true;
+  shadowed(tubes);
+  shadowed(collars);
+  collars.userData.bloom = marbleGlow(0.22); // renkli bilezikler hafifçe ışır
   group.add(tubes, collars);
 
   // --- Oluklar -------------------------------------------------------------
   for (const g of layout.gutters) group.add(buildGutter(g, mats));
 
   // --- Toplama kutusu --------------------------------------------------------
-  const c = layout.collector;
   const boxW = 1.15;
   const boxH = 1.2;
   const zMin = Math.min(...layout.gutters.map((g) => g.z)) - 0.4;
@@ -450,101 +607,116 @@ export function buildMachine(layout: MachineLayout, mats: Materials): MachineVis
   group.add(box(t, boxH, zMax - zMin, mats.wood, cx + boxW / 2, boxH / 2, (zMin + zMax) / 2));
   group.add(box(boxW, boxH, t, mats.wood, cx, boxH / 2, zMin));
   group.add(box(boxW, boxH, t, mats.wood, cx, boxH / 2, zMax));
-  // Kutunun içindeki bilye yığını
-  const pileCount = 160;
-  const pile = new THREE.InstancedMesh(new THREE.SphereGeometry(MARBLE_RADIUS, 14, 10), new THREE.MeshPhysicalMaterial({ roughness: 0.15, clearcoat: 1 }), pileCount);
+  group.add(box(boxW + 0.06, 0.05, 0.05, mats.polishedBrass, cx, boxH, zMax + 0.01, 0.02));
+
+  const sphere = new THREE.SphereGeometry(MARBLE_RADIUS, 16, 12);
+  const pileCount = 170;
+  const pile = new THREE.InstancedMesh(sphere, mats.marble, pileCount);
   const r = rng(99);
   for (let i = 0; i < pileCount; i++) {
     const px = cx + (r() - 0.5) * (boxW - 0.25);
     const pz = zMin + 0.2 + r() * (zMax - zMin - 0.4);
     const py = 0.1 + r() * 0.35 * (1 - Math.abs(pz - (zMin + zMax) / 2) / ((zMax - zMin) / 2)) + 0.05;
-    m.compose(new THREE.Vector3(px, py, pz), ident, new THREE.Vector3(1, 1, 1));
+    m.compose(new THREE.Vector3(px, py, pz), new THREE.Quaternion().random(), new THREE.Vector3(1, 1, 1));
     pile.setMatrixAt(i, m);
-    const hue = r();
-    pile.setColorAt(i, new THREE.Color().setHSL(hue, 0.7, 0.6, THREE.SRGBColorSpace));
+    pile.setColorAt(i, new THREE.Color().setHSL(r(), 0.7, 0.62, THREE.SRGBColorSpace));
   }
-  pile.castShadow = true;
+  shadowed(pile);
+  pile.userData.bloom = marbleGlow(0.12);
   group.add(pile);
-  void c;
 
-  // --- Asansör (dekoratif): bilyeleri kutudan güverteye taşır ------------
+  // --- Asansör: bilyeleri kutudan güverteye taşır --------------------------
   const liftX = cx - boxW / 2 - 0.35;
   const liftZ = 0;
   const liftBottom = 0.4;
   const liftTop = deckY + 0.2;
   for (const dz of [-0.2, 0.2]) group.add(rod({ x: liftX, y: 0.05, z: liftZ + dz }, { x: liftX, y: liftTop + 0.3, z: liftZ + dz }, 0.03, mats.brass));
   for (const y of [liftBottom, liftTop]) {
-    const wheel = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 8, 32), mats.brass));
+    const wheel = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 10, 36), mats.polishedBrass));
     wheel.position.set(liftX, y, liftZ);
     group.add(wheel);
   }
   group.add(beam({ x: liftX, y: liftTop + 0.3, z: liftZ }, { x: x0 + 0.1, y: deckY + 0.05, z: liftZ }, 0.12, 0.08, mats.brass));
   const cupCount = 18;
-  const cups = new THREE.InstancedMesh(new RoundedBoxGeometry(0.2, 0.12, 0.24, 2, 0.03), mats.lightWood, cupCount);
-  cups.castShadow = true;
+  const cups = new THREE.InstancedMesh(new RoundedBoxGeometry(0.2, 0.12, 0.24, 2, 0.035), mats.lightWood, cupCount);
+  shadowed(cups);
   group.add(cups);
+  const liftMarbles = new THREE.InstancedMesh(sphere, mats.marble, cupCount);
+  for (let i = 0; i < cupCount; i++) liftMarbles.setColorAt(i, new THREE.Color().setHSL(r(), 0.75, 0.62, THREE.SRGBColorSpace));
+  shadowed(liftMarbles);
+  liftMarbles.userData.bloom = marbleGlow(0.3);
+  group.add(liftMarbles);
 
-  // Güverte üstünde bilye hazneleri (cam fanuslar)
+  // --- Güverte üstünde bilye hazneleri (cam fanuslar) ------------------------
   const glass = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
-    roughness: 0.05,
-    transmission: 0,
+    roughness: 0.04,
     transparent: true,
-    opacity: 0.22,
+    opacity: 0.18,
     clearcoat: 1,
     depthWrite: false,
+    side: THREE.DoubleSide,
   });
   const hopperXs = [x0 + 1.4, (x0 + x1) / 2 - 1.5, layout.kitX];
-  const marbleMat = new THREE.MeshPhysicalMaterial({ roughness: 0.12, clearcoat: 1 });
   for (const hx of hopperXs) {
-    const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 0.16, 40), mats.brass));
+    const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 0.16, 48), mats.polishedBrass));
     base.position.set(hx, deckY + deckH / 2 + 0.08, -0.15);
     group.add(base);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), glass);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), glass);
     dome.position.set(hx, deckY + deckH / 2 + 0.16, -0.15);
+    dome.userData.bloom = 'hide';
+    dome.layers.set(LAYER_FX);
     group.add(dome);
-    const n = 40;
-    const inside = new THREE.InstancedMesh(new THREE.SphereGeometry(MARBLE_RADIUS * 1.1, 12, 8), marbleMat, n);
+    const n = 46;
+    const inside = new THREE.InstancedMesh(sphere, mats.marble, n);
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2;
       const rad = Math.sqrt(r()) * 0.4;
       const yy = deckY + deckH / 2 + 0.26 + r() * 0.2 * (1 - rad / 0.45);
-      m.compose(new THREE.Vector3(hx + Math.cos(a) * rad, yy, -0.15 + Math.sin(a) * rad), ident, new THREE.Vector3(1, 1, 1));
+      m.compose(new THREE.Vector3(hx + Math.cos(a) * rad, yy, -0.15 + Math.sin(a) * rad), new THREE.Quaternion().random(), new THREE.Vector3(1.1, 1.1, 1.1));
       inside.setMatrixAt(i, m);
-      inside.setColorAt(i, new THREE.Color().setHSL(r(), 0.75, 0.6, THREE.SRGBColorSpace));
+      inside.setColorAt(i, new THREE.Color().setHSL(r(), 0.75, 0.62, THREE.SRGBColorSpace));
     }
+    inside.userData.bloom = marbleGlow(0.25);
     group.add(inside);
   }
 
-  return { group, lift: { cups, bottom: liftBottom, top: liftTop, x: liftX, z: liftZ, count: cupCount }, deckY };
+  mergeStatic(group, (o) => keep.includes(o));
+  return {
+    group,
+    lift: { cups, marbles: liftMarbles, bottom: liftBottom, top: liftTop, x: liftX, z: liftZ, count: cupCount },
+    deckY,
+  };
 }
 
 function buildGutter(g: Gutter, mats: Materials): THREE.Group {
   const group = new THREE.Group();
   const R = 0.15;
   const len = Math.hypot(g.xHigh - g.xLow, g.yHigh - g.yLow);
-  const geo = new THREE.CylinderGeometry(R, R, len, 28, 1, true, 0, Math.PI);
+  const geo = new THREE.CylinderGeometry(R, R, len, 32, 1, true, 0, Math.PI);
   geo.rotateZ(-Math.PI / 2);
   const mat = mats.brass.clone();
   mat.side = THREE.DoubleSide;
-  mat.roughness = 0.35;
   const trough = shadowed(new THREE.Mesh(geo, mat));
   const angle = Math.atan2(g.yHigh - g.yLow, g.xHigh - g.xLow);
   const midX = (g.xHigh + g.xLow) / 2;
   trough.position.set(midX, gutterY(g, midX) + R, g.z);
   trough.rotation.z = angle;
   group.add(trough);
-  // Kapalı yüksek uç
+  // Oluğun dudakları: iki ince, cilalı pirinç ray
+  for (const dz of [-R, R]) {
+    group.add(rod({ x: g.xLow, y: g.yLow + R, z: g.z + dz }, { x: g.xHigh, y: g.yHigh + R, z: g.z + dz }, 0.018, mats.polishedBrass, 10));
+  }
   const cap = new THREE.Mesh(new THREE.CircleGeometry(R, 20, Math.PI, Math.PI), mat);
   cap.rotation.y = Math.PI / 2;
   cap.position.set(g.xHigh, g.yHigh + R, g.z);
   group.add(cap);
-  // Destek ayakları
   const steps = Math.max(2, Math.round((g.xHigh - g.xLow) / 2.4));
   for (let i = 0; i <= steps; i++) {
     const x = g.xLow + 0.4 + ((g.xHigh - g.xLow - 0.8) * i) / steps;
     const y = gutterY(g, x);
-    group.add(rod({ x, y: 0, z: g.z }, { x, y: y - 0.01, z: g.z }, 0.03, mats.brass, 8));
+    group.add(rod({ x, y: 0, z: g.z }, { x, y: y - 0.01, z: g.z }, 0.03, mats.brass, 10));
+    group.add(box(0.14, 0.04, 0.14, mats.polishedBrass, x, 0.02, g.z, 0.015));
   }
   return group;
 }

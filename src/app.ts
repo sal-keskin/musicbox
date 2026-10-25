@@ -8,7 +8,7 @@ import { Scheduler } from './audio/scheduler';
 import { SynthEngine } from './audio/synth';
 import { buildLayout, barKey, drumKey, XYLO_HIGH, XYLO_LOW, type MachineLayout, type Target } from './sim/layout';
 import { BEFORE_HIT } from './sim/paths';
-import { MachineScene, type ActiveMarble } from './sim/scene';
+import { MachineScene, type ActiveMarble, type Quality, type QualitySetting } from './sim/scene';
 import { LIBRARY, TEMPLATE } from './library/tunes';
 import type { DrumPiece } from './engine/types';
 
@@ -25,6 +25,8 @@ const DRUM_NAMES_TR: Record<DrumPiece, string> = {
 };
 
 const STORAGE_DRAFT = 'musicbox.draft';
+const STORAGE_QUALITY = 'musicbox.quality';
+const QUALITY_NAMES: Record<Quality, string> = { high: 'Yüksek', medium: 'Orta', low: 'Hafif' };
 const PREROLL = BEFORE_HIT + 0.25;
 
 interface LiveMarble {
@@ -331,6 +333,30 @@ export class App {
       this.setEditorStatus([{ cls: '', text: 'Şablon yüklendi. Notaları değiştirip Uygula ve çal düğmesine bas.' }]);
     });
     $('btn-view').addEventListener('click', () => this.scene.resetView());
+    const quality = $('quality') as HTMLSelectElement;
+    const showQuality = (q: Quality) => {
+      $('out-quality').textContent = quality.value === 'auto' ? `Otomatik · ${QUALITY_NAMES[q]}` : QUALITY_NAMES[q];
+    };
+    this.scene.onQualityChange = showQuality;
+    let saved: string | null = new URLSearchParams(location.search).get('quality');
+    try {
+      saved ??= localStorage.getItem(STORAGE_QUALITY);
+    } catch {
+      /* depolama kapalı olabilir */
+    }
+    if (saved && ['auto', 'high', 'medium', 'low'].includes(saved)) quality.value = saved;
+    this.scene.setQuality(quality.value as QualitySetting);
+    showQuality(this.scene.qualityLevel);
+    quality.addEventListener('change', () => {
+      this.scene.setQuality(quality.value as QualitySetting);
+      showQuality(this.scene.qualityLevel);
+      try {
+        localStorage.setItem(STORAGE_QUALITY, quality.value);
+      } catch {
+        /* yok say */
+      }
+    });
+
     $('chk-orbit').addEventListener('change', (e) => {
       this.scene.controls.autoRotate = (e.target as HTMLInputElement).checked;
       this.scene.controls.autoRotateSpeed = 0.6;

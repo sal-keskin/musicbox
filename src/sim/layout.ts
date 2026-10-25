@@ -101,7 +101,7 @@ export function pitchColor(midi: number): [number, number, number] {
   // Do kırmızı, Re turuncu, Mi sarı, Fa yeşil, Sol turkuaz, La mavi, Si mor.
   const hue = [0, 0.04, 0.075, 0.105, 0.14, 0.3, 0.38, 0.47, 0.53, 0.6, 0.68, 0.76][pc];
   const sharp = !NATURAL_STEPS.has(pc);
-  return hslToRgb(hue, sharp ? 0.55 : 0.78, sharp ? 0.42 : 0.6);
+  return hslToRgb(hue, sharp ? 0.62 : 0.86, sharp ? 0.4 : 0.56);
 }
 
 export function isSharp(midi: number): boolean {

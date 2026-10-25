@@ -111,8 +111,13 @@ src/
   sim/
     layout.ts        Çubuk/davul/nozul/oluk yerleşimi (saf geometri)
     paths.ts         Bilye yörüngeleri (analitik, durum tutmaz)
-    build.ts         3B modeller: ksilofon, davul seti, güverte, oluklar
-    scene.ts         Three.js sahnesi, vuruş tepkileri, seçme (raycast)
+    build.ts         3B modeller ve malzemeler: ksilofon, davul seti, güverte, sahne
+    scene.ts         Sahne, kamera, ışıklar, vuruş tepkileri, seçme (raycast)
+    post.ts          Son işleme: seçici bloom, GTAO, alan derinliği, kalite kademeleri
+    effects.ts       Bilye izleri ve yükselen nota simgeleri
+    reflector.ts     Yumuşak zemin yansıması
+    contactShadow.ts Bir kez pişirilen temas gölgeleri
+    merge.ts         Hareketsiz parçaları birleştirip çizim çağrısını azaltma
   library/tunes.ts   Eser kütüphanesi (ABC)
   app.ts             Hepsini bağlayan uygulama ve arayüz
 ```
@@ -128,6 +133,30 @@ Ses aynı notayı Web Audio saatine göre aynı ana planlar; görüntü de ses
 kartının çıkış gecikmesini hesaba katan zaman damgasıyla çizilir. Duraklatma,
 sarma ve hız değişimi kendiliğinden doğru çalışır çünkü hiçbir bilyenin
 saklanan bir durumu yoktur.
+
+### Görsel katman
+
+Hedef, teknik bir 3B demodan çok, sihirli bir kinetik heykel ya da özenli bir
+müzik oyuncağı hissi:
+
+- **Kamera:** 35 mm eşdeğeri (dikey görüş açısı ≈ 37,8°), hafif yüksekten ve
+  soldan bakan üç çeyrek açı. Uzaklık, makinenin sınır kutusu ekrandaki boş
+  alana sığacak şekilde her ekran oranı için ayrıca hesaplanır.
+- **Işık:** sıcak tepe ışığı (önden-sağdan, yumuşak gölgeli), soğuk mor kontur
+  ışığı, makine altında temas gölgeleri ve vuruşlarla nabız gibi atan renkli
+  vurgu ışıkları (kick/yer tomu pembe, trampet/tomlar mavi, ziller kehribar).
+- **Malzemeler:** satin ceviz, fırçalanmış (anizotropik) pirinç, pahlı kenarlı
+  cilalı tuşlar, saten zil metali, metalik pul boyalı davul gövdeleri ve iç
+  ışımalı cam bilyeler (Yüksek kalitede gerçek ışık geçirgenliğiyle).
+- **Efektler:** seçici bloom (yalnızca bilyeler, vuruş halkaları, notalar,
+  parlayan tuşlar ve sahne kenarı ışık saçar), ortam gölgelemesi (GTAO), arka
+  plandaki ışık dizilerini bokeh'e çeviren hafif alan derinliği, yumuşak zemin
+  yansıması, hızlı bilyelerin arkasında sönen izler ve vuruş noktasından
+  yükselen nota simgeleri.
+
+Ses panelindeki **Görüntü kalitesi** ayarı üç kademe sunar: *Yüksek* (hepsi),
+*Orta* (yansıma ve parlama) ve *Hafif* (efektsiz). *Otomatik* kipte uygulama
+kare süresini izler ve akıcılık düşerse kendiliğinden bir kademe iner.
 
 ## Kütüphanedeki eserler
 

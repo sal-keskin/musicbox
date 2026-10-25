@@ -94,6 +94,13 @@
           <input id="vol-drums" type="range" min="0" max="100" value="100" />
           <label for="vol-marbles">Bilye tıkırtısı <output id="out-marbles">60</output></label>
           <input id="vol-marbles" type="range" min="0" max="100" value="60" />
+          <label for="quality">Görüntü kalitesi <output id="out-quality">Yüksek</output></label>
+          <select id="quality">
+            <option value="auto">Otomatik</option>
+            <option value="high">Yüksek: yansıma, gölgeleme, parlama, alan derinliği</option>
+            <option value="medium">Orta: yansıma ve parlama</option>
+            <option value="low">Hafif: efektsiz, en hızlı</option>
+          </select>
           <div class="mixer-row">
             <button id="btn-view" class="ghost small">Görünümü sıfırla</button>
             <label class="switch"><input id="chk-orbit" type="checkbox" /> Kamera turu</label>

@@ -147,3 +147,85 @@ export function cymbalTexture(): THREE.CanvasTexture {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+/**
+ * Satin ceviz: sıcak kahve zemin, akan koyu damarlar, açık renkli öz
+ * çizgileri ve ince gözenekler.
+ */
+export function walnutTexture(seed: number, dark = false): THREE.CanvasTexture {
+  const [c, g] = canvas(1024, 512);
+  const r = rng(seed);
+  const base = dark ? ['#4a2c19', '#5a3720', '#3c2314'] : ['#7a4b2b', '#8e5a35', '#6a3f23'];
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, base[0]);
+  grad.addColorStop(0.5, base[1]);
+  grad.addColorStop(1, base[2]);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 1024, 512);
+
+  // Geniş renk dalgaları
+  for (let i = 0; i < 18; i++) {
+    const y = r() * 512;
+    const h = 15 + r() * 50;
+    const light = r() > 0.55;
+    const band = g.createLinearGradient(0, y - h, 0, y + h);
+    band.addColorStop(0, 'rgba(0,0,0,0)');
+    band.addColorStop(0.5, light ? `rgba(214,150,92,${0.08 + r() * 0.1})` : `rgba(30,14,6,${0.1 + r() * 0.14})`);
+    band.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = band;
+    g.fillRect(0, y - h, 1024, 2 * h);
+  }
+  // Akan damarlar
+  for (let i = 0; i < 140; i++) {
+    const y0 = r() * 512;
+    const amp = 3 + r() * 12;
+    const freq = 0.002 + r() * 0.008;
+    const phase = r() * Math.PI * 2;
+    const light = r() > 0.8;
+    g.strokeStyle = light ? 'rgba(226,170,110,1)' : 'rgba(28,12,4,1)';
+    g.globalAlpha = (light ? 0.08 : 0.1) + r() * 0.2;
+    g.lineWidth = 0.6 + r() * 2.2;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 8) {
+      const y = y0 + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 2.7 + phase * 1.3) * amp * 0.35;
+      if (x === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // Gözenekler
+  g.globalAlpha = 1;
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = `rgba(20,8,2,${0.12 + r() * 0.2})`;
+    g.fillRect(r() * 1024, r() * 512, 1 + r() * 3, 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Sahne zemini: ortası aydınlık, kenarlara doğru kararan mor lake. */
+export function stageTexture(): THREE.CanvasTexture {
+  const [c, g] = canvas(1024, 1024);
+  const grad = g.createRadialGradient(512, 560, 40, 512, 512, 512);
+  grad.addColorStop(0, '#3f345c');
+  grad.addColorStop(0.45, '#2e2647');
+  grad.addColorStop(0.8, '#1d1830');
+  grad.addColorStop(1, '#141020');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 1024, 1024);
+  // İnce eş merkezli halkalar (plak gibi)
+  g.strokeStyle = 'rgba(255,255,255,0.025)';
+  for (let rad = 30; rad < 512; rad += 9) {
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(512, 512, rad, 0, Math.PI * 2);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
